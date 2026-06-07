@@ -40,7 +40,8 @@ if [ ! -d "$WOLVENKIT_CLI_PATH" ]; then
       https://github.com/WolvenKit/WolvenKit/releases/download/8.18.0/WolvenKit.ConsoleLinux-8.18.0.zip \
       -o "Cyberpunk\ 2077\ Furigana/files/src.zip.old" || { echo "Failed to download WolvenKit"; exit 1; } && {
         echo "Extracting WolvenKit Linux binary..."
-        unzip -q "$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/src.zip.old" \
+        # Use -o flag for overwrite and -q for quiet mode (no prompts)
+        unzip -q -o "$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/src.zip.old" \
             -d "$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/" || { 
                 echo "Failed to extract WolvenKit"; exit 1;
         } && \
@@ -49,6 +50,12 @@ if [ ! -d "$WOLVENKIT_CLI_PATH" ]; then
 fi
 
 WOLVENKIT_CLI="$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/WolvenKit.ConsoleLinux/WolvenKit.CLI"
+
+# Verify WolvenKit CLI exists before using it
+if [ ! -f "$WOLVENKIT_CLI" ]; then
+    echo "Error: WolvenKit CLI not found at $WOLVENKIT_CLI after extraction. Please check the path."
+    exit 1
+fi
 
 echo "Exporting subtitles ($ARCHIVEFOLDER)..."
 pushd "$ARCHIVEFOLDER" || exit 1
