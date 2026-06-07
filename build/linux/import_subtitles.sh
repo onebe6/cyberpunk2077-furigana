@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script handles the import of subtitles and packaging into the final archive.
-set -e  # Exit on error, but we handle specific errors gracefully where needed
+set -ex  # Exit on error, but we handle specific errors gracefully where needed
 
 cd "$(dirname "$0")"
 
