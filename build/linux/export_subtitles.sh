@@ -31,17 +31,19 @@ if [ ! -d "$WOLVENKIT_CLI_PATH" ]; then
     echo "Downloading WolvenKit Linux binary..."
     
     # Create directory if needed (handle spaces in path)
-    mkdir -p "$(dirname "./Cyberpunk\ 2077\ Furigana/files/WolvenKit.ConsoleLinux")" || { echo "Failed to create WolvenKit dir"; exit 1; }
+    mkdir -p "$(dirname "./Cyberpunk 2077 Furigana/files/WolvenKit.ConsoleLinux")" || { echo "Failed to create WolvenKit dir"; exit 1; }
     
     curl -L --fail-with-body \
       https://github.com/WolvenKit/WolvenKit/releases/download/8.18.0/WolvenKit.ConsoleLinux-8.18.0.zip \
-      -o "Cyberpunk\ 2077\ Furigana/files/src.zip.old" || { echo "Failed to download WolvenKit"; exit 1; } && {
+      -o "$(dirname "./Cyberpunk 2077 Furigana/files/src.zip.old")/src.zip" || { echo "Failed to download WolvenKit"; exit 1; } && {
         echo "Extracting WolvenKit Linux binary..."
         
         # Extract directly without specifying destination (unzip will create its own structure)
-        unzip -qo "$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/src.zip.old" \
-            || { echo "Failed to extract WolvenKit"; exit 1; } && \
-          rm -f "Cyberpunk\ 2077\ Furigana/files/src.zip.old"
+        unzip -qo "$(dirname "./Cyberpunk 2077 Furigana/files/src.zip")/src.zip" \
+            -d "$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/" || { 
+                echo "Failed to extract WolvenKit"; exit 1;
+        } && \
+          rm -f "$(dirname "./Cyberpunk 2077 Furigana/files/src.zip")/src.zip"
     }
 fi
 
