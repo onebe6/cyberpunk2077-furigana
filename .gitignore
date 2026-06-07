@@ -19,3 +19,5 @@ src/wolvenkit/Cyberpunk 2077 Furigana/packed/archive/pc/mod/
 .local/
 .claude/
 .claude.json
+.aider*
+src/wolvenkit/
