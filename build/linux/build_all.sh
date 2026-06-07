@@ -4,13 +4,17 @@
 
 cd "$(dirname "$0")"
 
+echo "Build directory: $(pwd)"
+
 # Does not compile C++ binaries
 if [ ! -d ".venv" ]; then
-  python3 -m venv .venv
+  python3 -m venv .venv || { echo "Failed to create virtual environment"; exit 1; }
 fi
 
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt --quiet || { 
+    echo "(Some packages may already be installed, continuing)"
+}
 
 ./build.sh
 ./export_subtitles.sh

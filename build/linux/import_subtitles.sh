@@ -38,7 +38,9 @@ else
 fi
 
 # Use WolvenKit Linux binary from the same location as export_subtitles.sh
-WOLVENKIT_CLI="$BUILD_DIR/../src/wolvenkit/Cyberpunk 2077 Furigana/files/WolvenKit.ConsoleLinux/WolvenKit.CLI"
+WOLVENKIT_CLI="$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/WolvenKit.ConsoleLinux/WolvenKit.CLI"
+
+echo "Checking for WolvenKit CLI at: $WOLVENKIT_CLI"
 
 # Normalize path to remove any .. components and resolve spaces properly
 if [ -f "$WOLVENKIT_CLI" ]; then
@@ -47,10 +49,67 @@ if [ -f "$WOLVENKIT_CLI" ]; then
     }
 else
     # Try alternative paths if the original doesn't exist
-    ALTERNATIVE_WK="$BUILD_DIR/src/wolvenkit/Cyberpunk 2077 Furigana/files/WolvenKit.ConsoleLinux/WolvenKit.CLI"
-    WOLVENKIT_CLI=$(realpath -- "$ALTERNATIVE_WK") || { 
-        echo "Error: WolvenKit CLI not found at: $WOLVENKIT_CLI or $ALTERNATIVE_WK"; exit 1;
-    }
+    ALTERNATIVE_WK="$BUILD_DIR/src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/WolvenKit.ConsoleLinux/WolvenKit.CLI"
+    
+    echo "Trying alternative path: $ALTERNATIVE_WK"
+    if [ -f "$ALTERNATIVE_WK" ]; then
+        WOLVENKIT_CLI=$(realpath -- "$ALTERNATIVE_WK") || { 
+            echo "Error: Failed to normalize alternative WolvenKit CLI path"; exit 1;
+        }
+    else
+        # Try one more location (direct from build/linux)
+        DIRECT_WK="$BUILD_DIR/WolvenKit.ConsoleLinux/WolvenKit.CLI"
+        
+        if [ -f "$DIRECT_WK" ]; then
+            WOLVENKIT_CLI=$(realpath -- "$DIRECT_WK") || { 
+                echo "Error: Failed to normalize direct WolvenKit CLI path"; exit 1;
+            }
+        else
+            # Try from src/wolvenkit directly (no build/linux prefix)
+            SRC_WK="$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/WolvenKit.ConsoleLinux/WolvenKit.CLI"
+            
+            if [ -f "$SRC_WK" ]; then
+                WOLVENKIT_CLI=$(realpath -- "$SRC_WK") || { 
+                    echo "Error: Failed to normalize src WolvenKit CLI path"; exit 1;
+                }
+            else
+                # Try from build/linux/src/wolvenkit (no Cyberpunk folder)
+                NOCYBERPUNK_WK="$BUILD_DIR/../src/wolvenkit/WolvenKit.ConsoleLinux/WolvenKit.CLI"
+                
+                if [ -f "$NOCYBERPUNK_WK" ]; then
+                    WOLVENKIT_CLI=$(realpath -- "$NOCYBERPUNK_WK") || { 
+                        echo "Error: Failed to normalize nocyberpunk WolvenKit CLI path"; exit 1;
+                    }
+                else
+                    # Try from build/linux/src/wolvenkit/Cyberpunk (no Furigana folder)
+                    NOFURIGANA_WK="$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077/WolvenKit.ConsoleLinux/WolvenKit.CLI"
+                    
+                    if [ -f "$NOFURIGANA_WK" ]; then
+                        WOLVENKIT_CLI=$(realpath -- "$NOFURIGANA_WK") || { 
+                            echo "Error: Failed to normalize nofurigana WolvenKit CLI path"; exit 1;
+                        }
+                    else
+                        # Try from build/linux/src/wolvenkit/Cyberpunk\ 2077 (no Furigana folder)
+                        NOFURIGANA_WK="$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077/WolvenKit.ConsoleLinux/WolvenKit.CLI"
+                        
+                        if [ -f "$NOFURIGANA_WK" ]; then
+                            WOLVENKIT_CLI=$(realpath -- "$NOFURIGANA_WK") || { 
+                                echo "Error: Failed to normalize nofurigana WolvenKit CLI path"; exit 1;
+                            }
+                        else
+                            # Try from build/linux/src/wolvenkit/Cyberpunk\ 2077 (no Furigana folder) - with spaces handled
+                            WOLVENKIT_CLI="$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077/WolvenKit.ConsoleLinux/WolvenKit.CLI"
+                            
+                            if [ ! -f "$WOLVENKIT_CLI" ]; then
+                                echo "Error: WolvenKit CLI not found at any expected location. Please ensure it's installed."
+                                exit 1;
+                            fi
+                        fi
+                    fi
+                fi
+            fi
+        fi
+    fi
 fi
 
 echo "Converting files..."
