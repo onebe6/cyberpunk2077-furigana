@@ -35,12 +35,12 @@ if [ ! -d "$WOLVENKIT_CLI_PATH" ]; then
     
     curl -L --fail-with-body \
       https://github.com/WolvenKit/WolvenKit/releases/download/8.18.0/WolvenKit.ConsoleLinux-8.18.0.zip \
-      -o "$(dirname "./Cyberpunk 2077 Furigana/files/src.zip.old")/src.zip" || { echo "Failed to download WolvenKit"; exit 1; } && {
+      -o "$(dirname "./Cyberpunk 2077 Furigana/files/src.zip")/src.zip" || { echo "Failed to download WolvenKit"; exit 1; } && {
         echo "Extracting WolvenKit Linux binary..."
         
         # Extract directly without specifying destination (unzip will create its own structure)
         unzip -qo "$(dirname "./Cyberpunk 2077 Furigana/files/src.zip")/src.zip" \
-            -d "$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/" || { 
+            || { 
                 echo "Failed to extract WolvenKit"; exit 1;
         } && \
           rm -f "$(dirname "./Cyberpunk 2077 Furigana/files/src.zip")/src.zip"
