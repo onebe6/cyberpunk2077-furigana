@@ -38,8 +38,7 @@ else
 fi
 
 # Use WolvenKit Linux binary from the same location as export_subtitles.sh
-SCRIPT_DIR="$(cd "$(dirname "$0")" && cd ..)"  # Go up to build/linux directory
-WOLVENKIT_CLI="$SCRIPT_DIR/../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/WolvenKit.ConsoleLinux/WolvenKit.CLI"
+WOLVENKIT_CLI="$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/WolvenKit.ConsoleLinux/WolvenKit.CLI"
 
 if [ ! -f "$WOLVENKIT_CLI" ]; then
     echo "Error: WolvenKit CLI not found at: $WOLVENKIT_CLI"
