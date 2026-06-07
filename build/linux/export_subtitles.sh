@@ -76,4 +76,4 @@ if [ -d ".venv" ]; then
 fi
 
 echo "Decode unicode characters..."
-python3 unescapeunicode.py "$TARGETRAW" || { echo "(Unicode decode failed, continuing)" }
+python3 ../unescapeunicode.py "$TARGETRAW" || { echo "(Unicode decode failed, continuing)" }
