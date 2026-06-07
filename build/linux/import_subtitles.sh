@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # This script handles the import of subtitles and packaging into the final archive.
-set -ex  # Exit on error, but we handle specific errors gracefully where needed
+set -e  # Exit on error, but we handle specific errors gracefully where needed
 
 cd "$(dirname "$0")"
 
@@ -40,9 +40,17 @@ fi
 # Use WolvenKit Linux binary from the same location as export_subtitles.sh
 WOLVENKIT_CLI="$BUILD_DIR/../src/wolvenkit/Cyberpunk 2077 Furigana/files/WolvenKit.ConsoleLinux/WolvenKit.CLI"
 
-if [ ! -f "$WOLVENKIT_CLI" ]; then
-    echo "Error: WolvenKit CLI not found at: $WOLVENKIT_CLI"
-    exit 1
+# Normalize path to remove any .. components and resolve spaces properly
+if [ -f "$WOLVENKIT_CLI" ]; then
+    WOLVENKIT_CLI=$(realpath -- "$WOLVENKIT_CLI") || { 
+        echo "Error: Failed to normalize WolvenKit CLI path"; exit 1;
+    }
+else
+    # Try alternative paths if the original doesn't exist
+    ALTERNATIVE_WK="$BUILD_DIR/src/wolvenkit/Cyberpunk 2077 Furigana/files/WolvenKit.ConsoleLinux/WolvenKit.CLI"
+    WOLVENKIT_CLI=$(realpath -- "$ALTERNATIVE_WK") || { 
+        echo "Error: WolvenKit CLI not found at: $WOLVENKIT_CLI or $ALTERNATIVE_WK"; exit 1;
+    }
 fi
 
 echo "Converting files..."
