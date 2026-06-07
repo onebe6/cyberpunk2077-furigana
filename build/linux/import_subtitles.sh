@@ -10,10 +10,10 @@ BUILD_DIR=$(pwd)
 # Import necessary paths
 . ./cp2077path.sh || { echo "Failed to load cp2077path.sh"; exit 1; }
 
-SOURCE="../../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/Raw_Subtitles"
-MODFILES="../../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/Mod"
+SOURCE="$CP2077_FOLDER/archive/pc/content/Raw_Subtitles"
+MODFILES="$CP2077_FOLDER/archive/pc/content/Mod"
 TARGET="$MODFILES"
-ARCHIVEFOLDER="../../src/wolvenkit/Cyberpunk\ 2077\ Furigana/packed/archive/pc/mod"
+ARCHIVEFOLDER="$CP2077_FOLDER/packed/archive/pc/mod"
 
 echo "Removing previous files..."
 if [ -d "$TARGET" ]; then
