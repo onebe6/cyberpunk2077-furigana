@@ -1,7 +1,7 @@
 # cyberpunk2077-furigana
 Adds support for Japanese furigana for Cyberpunk 2077.
 
-Built for Cyberpunk 2077 version 2.2.1. Including support for Phantom Liberty.
+Built for Cyberpunk 2077 version 2.31. Including support for Phantom Liberty.
 
 The addon "Phantom Liberty" is not required.
 
@@ -35,7 +35,7 @@ https://www.nexusmods.com/cyberpunk2077/mods/1511
 
 
 ### RED4ext
-This mod requires version 1.27.0 or higher.<br/>
+This mod requires version 1.30.0 or higher.<br/>
 https://www.nexusmods.com/cyberpunk2077/mods/2380
 
 
