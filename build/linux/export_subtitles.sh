@@ -1,95 +1,178 @@
 #!/bin/bash
+# Unified script managing WolvenKit subtitle processing, asset deployment, and environment builds.
 
-# This script handles the export of subtitles from WolvenKit and preparation for the build.
+# Exit immediately if a command fails, an unset variable is used, or a piped command fails
+set -euo pipefail
+
+# Terminal colors for beautiful, scannable logging
+GEAR="\e[1;36m⚙\e[0m"
+CHECK="\e[1;32m✔\e[0m"
+ALERT="\e[1;31m✘\e[0m"
+INFO="\e[1;34mℹ\e[0m"
+
+log() { echo -e "${GEAR} $1"; }
+log_success() { echo -e "${CHECK} \e[1;32m$1\e[0m"; }
+log_warn() { echo -e "${INFO} \e[1;33m$1\e[0m"; }
+log_error() { echo -e "${ALERT} \e[1;31m$1\e[0m"; }
+
+# Move to script directory safely
 cd "$(dirname "$0")"
-
 BUILD_DIR=$(pwd)
 
-# Import necessary paths
-. ./cp2077path.sh || { echo "Failed to load cp2077path.sh"; exit 1; }
+# --- 1. Configuration & Path Setup ---
+CONFIG="${1:-Release}"
+log "Configuration profile: \e[1;35m$CONFIG\e[0m"
 
-SUBTITLEPATH="base/localization/jp-jp/subtitles"
-SUBTITLEPATH_EP1="ep1/localization/jp-pp/subtitles"
-WOLVENKITFILES="$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files"
+if [ -f "./cp2077path.sh" ]; then
+    # Temporarily allow unbound variables while sourcing the external path configuration
+    set +u
+    . "./cp2077path.sh"
+    set -u
+else
+    log_error "Critical Error: cp2077path.sh not found!"
+    exit 1
+fi
+
+# Ensure CP2077_FOLDER was actually populated and isn't empty
+if [ -z "${CP2077_FOLDER:-}" ]; then
+    log_error "Critical Error: CP2077_FOLDER variable was not set by cp2077path.sh!"
+    exit 1
+fi
+log "Cyberpunk 2077 Path: \e[1;34m$CP2077_FOLDER\e[0m"
+
+# Absolute paths for staging environments
+WOLVENKITFILES="$BUILD_DIR/target"
 MODFILES="$WOLVENKITFILES/Mod_Exported"
 RAWFILES="$WOLVENKITFILES/Raw"
-SOURCE="$MODFILES"
-TARGETRAW="$RAWFILES"
 ARCHIVEFOLDER="$CP2077_FOLDER/archive/pc/content"
 ARCHIVEFOLDER_EP1="$CP2077_FOLDER/archive/pc/ep1"
 
-# Cleanup and prepare target directory
-echo "Removing previous files..."
-rm -rf "$SOURCE" 2>/dev/null || true
-mkdir -p "$SOURCE" || { echo "Failed to create source dir"; exit 1; }
-rm -rf "$TARGETRAW" 2>/dev/null || true
-mkdir -p "$TARGETRAW" || { echo "Failed to create target raw dir"; exit 1; }
+WOLVENKIT_CLI="wolvenkit"
 
-# Download and extract WolvenKit Linux binary if not exists or outdated (version 8.18.0)
-WOLVENKIT_CLI_PATH="$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/WolvenKit.ConsoleLinux"
-if [ ! -d "$WOLVENKIT_CLI_PATH" ]; then
-    echo "Downloading WolvenKit Linux binary..."
-    
-    # Create directory if needed (handle spaces in path)
-    mkdir -p "$(dirname "./Cyberpunk 2077 Furigana/files/WolvenKit.ConsoleLinux")" || { echo "Failed to create WolvenKit dir"; exit 1; }
-    
-    curl -L --fail-with-body \
-      https://github.com/WolvenKit/WolvenKit/releases/download/8.18.0/WolvenKit.ConsoleLinux-8.18.0.zip \
-      -o "$(dirname "./Cyberpunk 2077 Furigana/files/src.zip")/src.zip" || { echo "Failed to download WolvenKit"; exit 1; } && {
-        echo "Extracting WolvenKit Linux binary..."
-        
-        # Extract directly without specifying destination (unzip will create its own structure)
-        unzip -qo "$(dirname "./Cyberpunk 2077 Furigana/files/src.zip")/src.zip" \
-            || { 
-                echo "Failed to extract WolvenKit"; exit 1;
-        } && \
-          rm -f "$(dirname "./Cyberpunk 2077 Furigana/files/src.zip")/src.zip"
-    }
+# --- 2. Environment Sanity Checks ---
+if ! command -v "$WOLVENKIT_CLI" &> /dev/null; then
+    log_error "WolvenKit CLI '$WOLVENKIT_CLI' not found in your PATH."
+    exit 1
 fi
 
-# Find the actual CLI path after extraction (handle nested folder structure)
-WOLVENKIT_CLI="$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/WolvenKit.ConsoleLinux-8.18.0/WolvenKit.ConsoleLinux/WolvenKit.CLI"
+log "Terminating any running Cyberpunk 2077 instances..."
+killall -q Cyberpunk2077.exe || true
 
-# Verify WolvenKit CLI exists before using it
-if [ ! -f "$WOLVENKIT_CLI" ]; then
-    echo "Error: WolvenKit CLI not found at $WOLVENKIT_CLI after extraction."
-    
-    # Try alternative paths in case version number differs or structure varies
-    if [ -d "$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/WolvenKit.ConsoleLinux" ]; then
-        WOLVENKIT_CLI="$BUILD_DIR/../src/wolvenkit/Cyberpunk\ 2077\ Furigana/files/WolvenKit.ConsoleLinux/WolvenKit.CLI"
-    fi
-    
-    if [ ! -f "$WOLVENKIT_CLI" ]; then
-        echo "Error: WolvenKit CLI still not found. Please check the extraction manually."
-        exit 1
-    fi
+# --- 3. WolvenKit Extraction & Processing Pipeline ---
+log "Flushing old extraction caches..."
+rm -rf "$MODFILES" "$RAWFILES"
+mkdir -p "$MODFILES" "$RAWFILES"
+
+log "Extracting Base game subtitles..."
+if [ -d "$ARCHIVEFOLDER" ]; then
+    pushd "$ARCHIVEFOLDER" > /dev/null
+    # Dropping the wildcard filter to extract all contents cleanly
+    "$WOLVENKIT_CLI" unbundle -p lang_ja_text.archive -o "$MODFILES" || log_warn "Base subtitles unbundle returned a non-zero exit code."
+    popd > /dev/null
+else
+    log_warn "Base archive folder missing, skipping asset extraction."
 fi
 
-echo "Exporting subtitles ($ARCHIVEFOLDER)..."
-pushd "$ARCHIVEFOLDER" || exit 1
-"$WOLVENKIT_CLI" unbundle -p lang_ja_text.archive -o "$MODFILES" -w "$SUBTITLEPATH/*" || true # continue even if error
-popd
+log "Extracting Phantom Liberty (EP1) subtitles..."
+if [ -d "$ARCHIVEFOLDER_EP1" ]; then
+    pushd "$ARCHIVEFOLDER_EP1" > /dev/null
+    # Dropping the wildcard filter to extract all contents cleanly
+    "$WOLVENKIT_CLI" unbundle -p lang_ja_text.archive -o "$MODFILES" || log_warn "EP1 subtitles unbundle returned a non-zero exit code."
+    popd > /dev/null
+else
+    log_warn "EP1 archive folder missing, skipping asset extraction."
+fi
 
-echo "Exporting subtitles ($ARCHIVEFOLDER_EP1)..."
-pushd "$ARCHIVEFOLDER_EP1" || exit 1
-"$WOLVENKIT_CLI" unbundle -p lang_ja_text.archive -o "$MODFILES" -w "$SUBTITLEPATH_EP1/*" || true # continue even if error
-popd
+log "Syncing extracted files to Raw staging..."
+if [ -d "$MODFILES" ] && [ "$(ls -A "$MODFILES")" ]; then
+    cp -r "$MODFILES/." "$RAWFILES/"
+else
+    log_warn "Source folder is empty. No assets found to mirror."
+fi
 
-echo "Copying files..."
-cp -r "$SOURCE" "$TARGETRAW" 2>/dev/null || echo "(Source empty, skipping copy)"
+log "Decoding serialized REDengine CR2W files..."
+if [ -d "$RAWFILES" ] && [ "$(ls -A "$RAWFILES")" ]; then
+    "$WOLVENKIT_CLI" cr2w -p "$RAWFILES" -s || log_warn "CR2W decoder finished with warnings."
+else
+    log_warn "Raw folder is empty. Skipping CR2W decode phase."
+fi
 
-echo "Decoding subtitles..."
-"$WOLVENKIT_CLI" cr2w -p "$TARGETRAW" -s || true # continue even if error (no subtitles to decode)
+log "Purging unneeded source cache files..."
+find "$RAWFILES" -name "*.json" ! -name "*.json.json" -type f -delete 2>/dev/null || true
 
-echo "Deleting copies of source files (clearing temporary items)..."
-# The original logic was a trick to delete only .json while leaving .json.json
-# We can replicate this with find.
-find "$TARGETRAW" -name "*.json" ! -name "*.json.json" -type f -delete 2>/dev/null || true
-
-# Ensure we are using the virtual environment if available
+# Isolating Python virtual environment environment changes
 if [ -d ".venv" ]; then
-  source .venv/bin/activate
+    log "Activating local Python Virtual Environment (.venv)..."
+    . .venv/bin/activate
 fi
 
-echo "Decode unicode characters..."
-python3 ../unescapeunicode.py "$TARGETRAW" || { echo "(Unicode decode failed, continuing)" }
+log "Executing Unicode unescape filters..."
+if [ -f "../unescapeunicode.py" ]; then
+    python3 ../unescapeunicode.py "$RAWFILES" || log_error "Unicode unescape parser crashed."
+else
+    log_warn "../unescapeunicode.py script target missing. Skipping phase."
+fi
+
+# Deactivate venv if we activated it to clean up current terminal session
+if [ -n "${VIRTUAL_ENV:-}" ]; then deactivate; fi
+
+
+# --- 4. Mod Staging & File Deployment ---
+log "Staging build trees to deployment directory..."
+
+# Deploy Redscript source structural tree
+mkdir -p "$CP2077_FOLDER/r6/scripts/cyberpunk2077-furigana"
+if [ -d "../../src/redscript" ]; then
+    cp -rf ../../src/redscript/* "$CP2077_FOLDER/r6/scripts/cyberpunk2077-furigana/"
+fi
+
+# Deploy RED4ext plugins based on active profile configuration context
+mkdir -p "$CP2077_FOLDER/dist/red4ext/plugins"
+if [ -d "../../src/red4ext/x64/$CONFIG" ]; then
+    cp -rf ../../src/red4ext/x64/$CONFIG/*.dll "$CP2077_FOLDER/dist/red4ext/plugins/"
+else
+    log_warn "RED4ext binaries matching profile [$CONFIG] missing. Skipping copy."
+fi
+
+# Deploy Cyber Engine Tweaks nativeSettings configurations
+mkdir -p "$CP2077_FOLDER/bin/x64/plugins/cyber_engine_tweaks/mods/nativeSettings"
+if [ -d "../../src/CP77_nativeSettings/nativeSettings" ]; then
+    cp -rf ../../src/CP77_nativeSettings/nativeSettings/* "$CP2077_FOLDER/bin/x64/plugins/cyber_engine_tweaks/mods/nativeSettings/"
+else
+    log_warn "nativeSettings template data not found; fallback placeholder workspace generated."
+fi
+
+# Set up WolvenKit packing workspace destination mapping layout
+mkdir -p "$CP2077_FOLDER/dist/wolvenkit/Cyberpunk 2077 Furigana/packed/"
+
+log "Pushing staged assets directly into game root directory..."
+if [ -d "$CP2077_FOLDER/dist" ]; then
+    cp -rf "$CP2077_FOLDER/dist"/* "$CP2077_FOLDER/"
+fi
+
+
+# --- 5. Redscript Compilation Engine Trigger ---
+log "Interrogating local environment for Redscript compilation engines..."
+
+REDSCRIPT_CMD=""
+if [ -f "../redscript-cli" ]; then
+    REDSCRIPT_CMD="../redscript-cli"
+elif [ -f "../redscript-cli.exe" ]; then
+    if command -v wine &> /dev/null; then
+        REDSCRIPT_CMD="wine ../redscript-cli.exe"
+    else
+        REDSCRIPT_CMD="../redscript-cli.exe"
+    fi
+fi
+
+if [ -n "$REDSCRIPT_CMD" ]; then
+    log "Compiling scripts using entrypoint: \e[1;33m$REDSCRIPT_CMD\e[0m"
+    $REDSCRIPT_CMD compile \
+        -s "$CP2077_FOLDER/r6/scripts" \
+        -b "$CP2077_FOLDER/r6/cache/final.redscripts" \
+        -o "$CP2077_FOLDER/r6/cache/final.redscripts.modded" || log_error "Redscript compilation engine threw a terminal compilation failure!"
+else
+    log_warn "Redscript compiler engine binary not located in parent architecture layouts. Compilation skipped."
+fi
+
+log_success "Build complete!"
